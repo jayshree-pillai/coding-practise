@@ -1,23 +1,5 @@
 # GenAI Interview Preparation — Running Answers
 
-**Updated:** October 13, 2026  
-**Coverage:** 90 frozen questions; 23 locked answers, 1 draft answer, 66 pending answers.  
-**Current position:** Section 3B, Question 4.
-
-Answers are developed individually or in batches requested by the user. Locked answers preserve the wording approved by the user; drafts remain open for review. The questions retain their original section and question numbers, with Section 3 divided into 3A and 3B.
-
-| Section | Topic | Locked | Draft | Pending |
-|---|---|---:|---:|---:|
-| 1 | RAG and information retrieval | 0 | 0 | 10 |
-| 2 | Agent orchestration with LangGraph | 10 | 0 | 0 |
-| 3A | Python fundamentals | 10 | 0 | 0 |
-| 3B | FastAPI and REST APIs | 3 | 1 | 6 |
-| 4 | MCP and LLM tool integration | 0 | 0 | 10 |
-| 5 | LLM evaluation, grounding and guardrails | 0 | 0 | 10 |
-| 6 | Asynchronous processing and distributed-system reliability | 0 | 0 | 10 |
-| 7 | Applied ML and NLP | 0 | 0 | 10 |
-| 8 | MLOps, cloud deployment and production observability | 0 | 0 | 10 |
-
 ## Section 1: RAG and information retrieval
 
 ### 1.1. What is RAG, and how is it different from fine-tuning?
@@ -89,7 +71,6 @@ A typical flow:
 ### 1.8. What is cosine similarity, and how does it differ from dot product and Euclidean distance?
 
 
-
 ### 1.9. What is approximate nearest-neighbor (ANN) search, and why is it used in vector retrieval?
 
 **ANN finds vectors close to a query efficiently, while allowing some true nearest neighbors to be missed.**
@@ -124,60 +105,37 @@ A typical flow:
 
 **Key nuance:** Recall and hit rate ignore ordering within K. RR/MRR consider only the first relevant result; nDCG considers relevance and positions throughout the top K. For RR@K, a relevant result beyond K earns zero.
 
-**K** is the number of top-ranked results evaluated.
 
-| Metric | What it measures |
-|---|---|
-| **Recall@K** | **Evidence coverage:** relevant items in the top K divided by all known relevant items for that query. |
-| **Hit rate@K** | **Retrieval success:** fraction of queries with at least one relevant result in the top K. Finding additional relevant results adds no credit. |
-| **RR** | **First relevant result’s position:** `1 / rank`. First at rank 2 → `0.5`; no relevant result in the evaluated list → `0`. |
-| **MRR** | **Average RR across queries**, including zeros for misses. Rewards finding the first relevant result early. |
-| **nDCG@K** | **Ranking quality:** normalized discounted cumulative gain. Rewards relevant results appearing earlier and supports graded relevance, such as partially versus highly relevant. `nDCG = DCG / ideal DCG`; `1` means an ideal ranking. |
+### 1.11. Write a pseducode to highlight BM25 implementation?
 
-**Example:** Four items are relevant; the top five contain two, with the first at rank 2. Recall@5 = `2/4 = 0.5`, the query counts as a hit, and RR = `1/2 = 0.5`.
-
-**Key nuance:** RR ignores relevant results after the first; nDCG considers their relevance and positions. With exactly one relevant item per query, mean Recall@K equals hit rate@K.
-
-
+### 1.12. What are the most efficient rerankers that works with latest LLM
 
 ## Section 2: Agent orchestration with LangGraph
 
 ### 2.1. What is an AI agent, and how is it different from a predefined workflow?
-
-**Status:** Locked
-
 An LLM-based agent uses the model to decide its next action—such as choosing a tool, inspecting the result and deciding whether more information is needed—to accomplish a goal within defined limits.
 
 A predefined workflow follows steps and routing rules written by the developer. It can include LLM calls, branches and parallel execution, but the developer determines the available paths.
 
 ### 2.2. What is the model → tool call → tool result loop, and which responsibilities belong to the LLM versus the runtime?
-
-**Status:** Locked
-
 The **LLM** decides whether to answer or request a tool, returning the tool’s name and arguments. After receiving the result, it decides whether more information or another action is needed.
 
 The **runtime** validates the request, checks permissions, executes the tool and calls the model again with the result. It manages errors and execution limits, repeating the loop until the model finishes or a limit is reached.
 
 ### 2.3. What are nodes, edges and conditional edges in a LangGraph workflow?
+**Nodes** are units of work, usually functions that read graph state and return updates—for example, calling an LLM or executing a tool. 
 
-**Status:** Locked
-
-**Nodes** are units of work, usually functions that read graph state and return updates—for example, calling an LLM or executing a tool. **Edges** connect nodes and determine execution order; a normal edge defines a fixed route to the next node.
+**Edges** connect nodes and determine execution order; a normal edge defines a fixed route to the next node.
 
 **Conditional edges** use a routing function to choose the next node or nodes based on the current state—for example, routing to a tool node when the model requests a tool, or ending when it produces a final answer.
 
-Source: [LangGraph Graph API overview](https://docs.langchain.com/oss/python/langgraph/graph-api).
-
 ### 2.4. What is graph state, and how do nodes read and update it?
-
-**Status:** Locked
-
 **Graph state** is the shared, structured data carried through a workflow—such as messages, retrieved evidence, intermediate results and status. Its schema defines the fields the workflow uses.
 
-Each **node** receives the current state and returns updates only to the fields it changes. A **reducer** is a function attached to a field that determines how its existing value combines with an incoming update. Without a custom reducer, an update replaces the existing value.
+Each **node** receives the current state and returns updates only to the fields it changes. 
 
+A **reducer** is a function attached to a field that determines how its existing value combines with an incoming update. Without a custom reducer, an update replaces the existing value.
 Reducers are defined in the state schema using `Annotated`:
-
 ```python
 from typing import Annotated, TypedDict
 from operator import add
@@ -186,61 +144,41 @@ class State(TypedDict):
     results: Annotated[list[str], add]
     status: str
 ```
-
 Here, `add` concatenates lists. If `results` contains `["A"]` and a node returns `{"results": ["B"]}`, LangGraph stores `["A", "B"]`. The `status` field uses default replacement. Fields omitted from a node’s update remain unchanged by that update.
 
-Source: [LangGraph Graph API overview](https://docs.langchain.com/oss/python/langgraph/graph-api).
-
 ### 2.5. What is a reducer, and why is it important when parallel nodes update state?
-
-**Status:** Locked
-
 A **reducer** defines how a state field’s existing value combines with updates—for example, appending results to a list or adding values to a counter.
 
 When **parallel nodes update the same field in the same execution step**, the reducer tells LangGraph how to combine their outputs. Without a reducer that supports those updates, LangGraph raises a concurrent-update error. For example, two workers can each return a list of findings, and an append reducer collects both lists.
 
-Source: [LangGraph concurrent-update guidance](https://docs.langchain.com/oss/python/langgraph/errors/INVALID_CONCURRENT_GRAPH_UPDATE).
-
 **Example 1 — Add token counts (integer reducer)**
-
 ```python
 from typing import Annotated, TypedDict
 from operator import add
-
 class UsageState(TypedDict):
     total_tokens: Annotated[int, add]
 ```
-
 If the current total is `100`, and two workers return `{"total_tokens": 30}` and `{"total_tokens": 20}`, the merged total becomes `150`. Each worker returns its own increment, not the running total.
 
 **Clarification — where is the total stored?**
-
 `UsageState` defines the schema; the actual state passed to a worker is a Python dictionary. The LangGraph runtime manages the accumulated state for the graph execution. A worker’s input state and its returned update are different things:
 
 | Worker | Total it reads | New tokens used | Update it returns |
 |---|---:|---:|---|
 | A | 100 | 30 | `{"total_tokens": 30}` |
 | B | 100 | 20 | `{"total_tokens": 20}` |
-
 The workers return their contributions without directly changing the input dictionary. LangGraph applies the addition reducer: **100 + 30 + 20 = 150**.
-
 **The graph’s resulting state for this run contains `total_tokens = 150`.** This is a value in the state managed by the runtime, not a `graph.total_tokens` attribute on the compiled graph object.
-
 For a graph configured with this schema and these two workers, each running once:
-
 ```python
 final_state = graph.invoke({"total_tokens": 100})
 print(final_state["total_tokens"])  # 150
 ```
-
 **Example 2 — Collect unique source IDs (set reducer)**
-
 ```python
 from typing import Annotated, TypedDict
-
 def merge_sources(current: set[str], incoming: set[str]) -> set[str]:
     return current | incoming
-
 class SourceState(TypedDict):
     source_ids: Annotated[set[str], merge_sources]
 ```
@@ -251,9 +189,7 @@ In both examples, workers return partial state updates and LangGraph invokes the
 
 **A reducer is a function—built-in or custom**
 
-`operator.add` is already a Python function. `merge_sources` is a custom function we defined ourselves. Both act as reducers because they are attached to state fields using `Annotated`.
-
-A reducer receives two inputs: the field’s existing value and one incoming update. It returns the combined value for that field. It does not receive the entire state dictionary or all workers’ outputs at once; LangGraph applies it as updates are merged.
+`operator.add` is already a Python function. `merge_sources` is a custom function we defined ourselves. Both act as reducers because they are attached to state fields using `Annotated`.A reducer receives two inputs: the field’s existing value and one incoming update. It returns the combined value for that field. It does not receive the entire state dictionary or all workers’ outputs at once; LangGraph applies it as updates are merged.
 
 For example, the token reducer could be written explicitly instead of importing `add`:
 
@@ -270,36 +206,23 @@ This uses the `Annotated` and `TypedDict` imports shown above. Conceptually, com
 The workers still return only `{"total_tokens": 30}` and `{"total_tokens": 20}`. **LangGraph calls `add_tokens` automatically** when applying those updates. A custom reducer similarly lets you define other combining rules, such as the set union used by `merge_sources`.
 
 ### 2.6. What is the orchestrator–worker pattern, and how does it use fan-out and fan-in?
-
-**Status:** Locked
-
 The **orchestrator–worker pattern** uses a coordinating component to break a goal into subtasks, delegate them to workers and combine their results. The subtasks can be determined dynamically based on the request.
 
 **Fan-out** dispatches independent subtasks to workers, often in parallel. **Fan-in** waits for the required worker results and combines them into a final output—for example, merging financial, industry and risk sections into one credit report.
 
-Source: [LangGraph workflows and agents](https://docs.langchain.com/oss/python/langgraph/workflows-agents).
-
 ### 2.7. What is checkpointing, and how does it support recovery and pause/resume?
-
-**Status:** Locked
-
 **Checkpointing** saves snapshots of a graph’s state and execution progress through a configured checkpointer. Checkpoints are grouped under a `thread_id`; durable storage such as PostgreSQL lets them survive process restarts.
 
 For **recovery**, LangGraph restores saved progress so the entire workflow need not restart. For **pause/resume**, an interrupt pauses execution, and a resume command with the same `thread_id` supplies the input needed to continue. The interrupted node restarts from its beginning, so code before the interrupt can run again.
 
-Sources: [LangGraph persistence](https://docs.langchain.com/oss/python/langgraph/persistence) and [interrupts](https://docs.langchain.com/oss/python/langgraph/interrupts).
-
 **Example — interrupt and resume**
-
 ```python
 from typing import TypedDict
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import interrupt, Command
-
 class ReviewState(TypedDict):
     approved: bool | None
-
 def review(state: ReviewState):
     decision = interrupt("Approve this report?")
     return {"approved": decision}
@@ -311,11 +234,9 @@ builder.add_edge("review", END)
 graph = builder.compile(checkpointer=InMemorySaver())
 
 config = {"configurable": {"thread_id": "report-123"}}
-
 # Start: pauses at interrupt() and returns the review question.
 paused = graph.invoke({"approved": None}, config)
 print(paused["__interrupt__"][0].value)  # Approve this report?
-
 # Later: the application supplies the human's approval.
 resumed = graph.invoke(Command(resume=True), config)
 print(resumed["approved"])  # True
@@ -323,46 +244,70 @@ print(resumed["approved"])  # True
 
 The first call pauses at `interrupt()` and returns the question to the caller. The application presents it to the human. After approval, the second call uses the same `thread_id` and supplies `True`; that value becomes the result of `interrupt()`, so the node returns `{"approved": True}`.
 
+**Pass a dictionary as the resume value, then explicitly return updates for each state field.**
+```python
+class ReviewState(TypedDict):
+    approved: bool | None
+    reviewer_comment: str | None
+def review(state: ReviewState):
+    response = interrupt("Approve this report and add a comment?")
+
+    return {
+        "approved": response["approved"],
+        "reviewer_comment": response["reviewer_comment"],
+    }
+```
+Start the graph:
+```python
+paused = graph.invoke(
+    {"approved": None, "reviewer_comment": None},
+    config,
+)
+```
+Later, supply both answers:
+```python
+resumed = graph.invoke(
+    Command(resume={
+        "approved": True,
+        "reviewer_comment": "Looks good.",
+    }),
+    config,
+)
+```
+
+Inside `review()`, **`response` receives that entire dictionary**. The node’s `return` updates both fields.
+
+The resulting state is:
+
+```python
+{
+    "approved": True,
+    "reviewer_comment": "Looks good.",
+}
+```
+
+**One interrupt can collect multiple values.** Fields omitted from the node’s returned dictionary keep their existing values.
 `InMemorySaver` keeps checkpoints only while this process is alive. Use a durable checkpointer, such as one backed by PostgreSQL, to resume after process restarts. On resume, the interrupted node starts again from its beginning; code before `interrupt()` can execute again.
 
 ### 2.8. What is the difference between short-term and long-term memory in an agent system?
-
-**Status:** Locked
-
 **Short-term memory** is the context maintained within one conversation or execution thread, such as messages and intermediate results. In LangGraph, it lives in graph state and can be persisted using a checkpointer.
 
 **Long-term memory** is information reused across conversations or threads, such as user preferences, facts and prior learnings. It is typically stored separately and retrieved when relevant. **Short-term refers to scope, not storage:** it can survive application restarts if persisted durably.
 
-Source: [LangGraph persistence](https://docs.langchain.com/oss/python/langgraph/persistence).
-
 ### 2.9. What is a bounded agent, and how do you prevent endless tool calls or execution loops?
-
-**Status:** Locked
-
 A **bounded agent** can choose its next actions within developer-defined limits on its task, permitted tools and resource usage.
 
 To prevent endless loops, the **runtime enforces** maximum steps or tool calls, timeouts, retry limits and token or cost budgets. It checks for completion or repeated actions without progress, then stops or requests human help. In LangGraph, `recursion_limit` caps graph execution steps; reaching it raises `GraphRecursionError`, so define a graceful exit before that limit.
 
-Sources: [LangGraph recursion limits](https://docs.langchain.com/oss/python/langgraph/graph-api#recursion-limit) and [LangChain model and tool call limits](https://docs.langchain.com/oss/python/langchain/middleware/built-in).
-
 ### 2.10. What is human-in-the-loop execution, and how do interrupts support human review?
-
-**Status:** Locked
-
 **Human-in-the-loop execution** pauses a workflow so a person can approve, reject or edit a proposed action or result before execution continues.
-
 In LangGraph, `interrupt(payload)` exposes the review request and pauses execution with state saved through a checkpointer. The application collects the human’s decision and resumes the same `thread_id` using `Command(resume=decision)`. That decision becomes the return value of `interrupt()`, and your code determines what happens next. The interrupted node restarts from its beginning, so place actions requiring approval after the interrupt.
-
-Source: [LangGraph interrupts](https://docs.langchain.com/oss/python/langgraph/interrupts).
 
 See the interrupt/resume code example under Q2.7.
 
 ## Section 3A: Python fundamentals
 
 ### 3A.1. What are the differences between a list, tuple, set and dictionary, and when would you use each?
-
-**Status:** Locked
-
 | Type | Main properties | When to use it |
 |---|---|---|
 | **List** | Ordered, mutable sequence; allows duplicates. | A collection that changes, such as retrieved chunks. |
@@ -372,12 +317,7 @@ See the interrupt/resume code example under Q2.7.
 
 **Hashable** means an object has a stable hash and compatible equality behavior, allowing it to serve as a dictionary key or set element. A tuple is hashable only if all its elements are hashable.
 
-Sources: [Python data structures](https://docs.python.org/3/tutorial/datastructures.html) and [hashable objects](https://docs.python.org/3/glossary.html#term-hashable).
-
 ### 3A.2. What does mutable versus immutable mean, and why are mutable default arguments risky?
-
-**Status:** Locked
-
 A **mutable** object can change in place, such as a list or dictionary. An **immutable** object cannot, such as an integer, string or tuple; assigning a different value rebinds the variable. A tuple can still contain a mutable object whose contents change.
 
 **Example — a tuple containing a list**
@@ -414,9 +354,6 @@ Each call that omits `items` gets a new list; an explicitly supplied list is sti
 Sources: [Python glossary](https://docs.python.org/3/glossary.html#term-mutable) and [default argument values](https://docs.python.org/3/tutorial/controlflow.html#default-argument-values).
 
 ### 3A.3. What is the difference between assignment, a shallow copy and a deep copy?
-
-**Status:** Locked
-
 **Assignment** creates another reference to the same object. A **shallow copy** creates a new outer container but keeps references to its nested objects. A **deep copy** recursively copies nested objects, so ordinary nested mutable containers can be changed independently.
 
 ```python
@@ -434,32 +371,16 @@ original["scores"].append(95)
 
 Adding a new top-level key to `original` would affect `alias`, but neither copy. Deep copying costs more time and memory; use it when you need independent nested data.
 
-Source: [Python copy operations](https://docs.python.org/3/library/copy.html).
-
 ### 3A.4. What is a decorator, and how does it wrap or extend a function’s behavior?
-
-**Status:** Locked
-
 A **decorator** is a callable that receives a function and returns the object that replaces it—commonly a wrapper adding logging, timing, retries or authorization without changing the original function’s body.
 
 Writing `@logged` above `def process(...)` is equivalent to `process = logged(process)` after defining the function. The decorator is applied when the definition executes; the wrapper runs when the decorated function is called. A typical wrapper forwards `*args, **kwargs`, calls the original function and returns its result. Use `functools.wraps` to preserve metadata such as its name and docstring.
 
-Sources: [Python function definitions](https://docs.python.org/3/reference/compound_stmts.html#function-definitions) and [functools.wraps](https://docs.python.org/3/library/functools.html#functools.wraps).
-
 ### 3A.5. What is the difference between an iterable, an iterator and a generator, and what does `yield` do?
-
-**Status:** Locked
-
 An **iterable** can provide an iterator through `iter()`, such as a list. An **iterator** tracks traversal state and returns successive values through `next()`, raising `StopIteration` when exhausted. Every iterator is iterable, but an iterable such as a list is not itself an iterator.
 
 A **generator** is an iterator created by a generator function or expression. In a generator function, `yield` produces a value and pauses execution, preserving local variables and the current position until the next request. This supports lazy processing without building the entire output list upfront. An exhausted generator must be recreated to iterate again.
-
-Source: [Python glossary: iterables, iterators and generators](https://docs.python.org/3/glossary.html).
-
 ### 3A.6. How do `try`, `except`, `else` and `finally` work in exception handling?
-
-**Status:** Locked
-
 - **`try`** contains the operation that might raise an exception.
 - **`except`** handles a matching exception; execution skips the remaining statements in `try`.
 - **`else`** runs if `try` completes normally, without an exception or an early exit such as `return`.
@@ -467,22 +388,12 @@ Source: [Python glossary: iterables, iterators and generators](https://docs.pyth
 
 Catch specific exceptions you can handle. An unmatched exception propagates after `finally`; exceptions raised in `else` are not caught by the preceding `except` clauses. Avoid returning from `finally`, because that can override an earlier return or suppress an exception.
 
-Source: [Python errors and exceptions](https://docs.python.org/3/tutorial/errors.html).
-
 ### 3A.7. What is a context manager, and how does the `with` statement manage resources?
-
-**Status:** Locked
-
 A **context manager** defines setup and cleanup around a block of code. The `with` statement calls `__enter__()` on entry and, if entry succeeds, calls `__exit__()` when the block exits—even if it raises an exception.
 
 For example, `with open("report.txt") as file:` closes the file when the block ends. Context managers also manage locks and transactions. Exceptions normally propagate after cleanup, but a context manager can deliberately suppress one by returning a truthy value from `__exit__()`.
 
-Source: [Python with statement](https://docs.python.org/3/reference/compound_stmts.html#the-with-statement).
-
 ### 3A.8. What is the difference between an instance method, a class method and a static method?
-
-**Status:** Locked
-
 | Method | Receives automatically | Typical use |
 |---|---|---|
 | **Instance method** | `self`: the instance. | Read or change that object’s state. |
@@ -491,22 +402,11 @@ Source: [Python with statement](https://docs.python.org/3/reference/compound_stm
 
 For example, `report.render()` uses an instance’s data, `Report.from_dict(data)` can construct an object using `cls(...)`, and `Report.is_valid_id(value)` can be a static utility. Using `cls` also lets an inherited class method construct the calling subclass.
 
-Source: [Python built-in classmethod and staticmethod](https://docs.python.org/3/library/functions.html#classmethod).
-
 ### 3A.9. What are coroutines, `async` and `await`, and how does the event loop execute them?
-
-**Status:** Locked
-
 A **coroutine** is a computation that can suspend and resume. Calling a coroutine function defined with `async def` returns a coroutine object; its body runs when awaited or scheduled as a task. **`await`** waits for an awaitable’s result and can suspend the current coroutine.
 
 An **asyncio event loop** runs one task at a time in its thread. When an awaited operation suspends, the loop can run other ready tasks and later resume the waiting one. Use `create_task()` or `gather()` to run independent operations concurrently; sequential awaits remain sequential. Blocking calls such as `time.sleep()` still block the loop inside `async def`; use async libraries or offload blocking work.
-
-Source: [Python coroutines and tasks](https://docs.python.org/3/library/asyncio-task.html).
-
 ### 3A.10. How do threading, multiprocessing and asyncio differ, and where does the GIL matter?
-
-**Status:** Locked
-
 | Approach | How it runs | Typical use |
 |---|---|---|
 | **Threading** | Multiple OS threads in one process, sharing memory. | Concurrent blocking I/O, such as calls through a synchronous SDK. |
@@ -515,19 +415,12 @@ Source: [Python coroutines and tasks](https://docs.python.org/3/library/asyncio-
 
 In **GIL-enabled CPython**, the Global Interpreter Lock allows only one thread per interpreter to execute Python bytecode at a time, limiting CPU parallelism from threads. I/O and some native libraries release the GIL; optional free-threaded builds can run without it. **The GIL does not make application logic thread-safe**—shared mutable state can still require locks.
 
-Sources: [Python threading](https://docs.python.org/3/library/threading.html), [multiprocessing](https://docs.python.org/3/library/multiprocessing.html), [asyncio tasks](https://docs.python.org/3/library/asyncio-task.html) and [race conditions](https://docs.python.org/3/glossary.html#term-race-condition).
-
 ## Section 3B: FastAPI and REST APIs
 
 ### 3B.1. What is a REST API, and what does “stateless” mean?
-
-**Status:** Locked
-
 A **REST API** follows **Representational State Transfer**, an architectural style that exposes resources through a uniform interface. In an HTTP API, resources have URLs such as `/reports/123`; clients use methods such as `GET` and `POST` and exchange representations of those resources, often as JSON.
 
 **Stateless** means each request carries the context needed to understand it, including the target resource, relevant parameters and required credentials. The server does not rely on remembered client session context from earlier requests. It can still store resources in a database; statelessness concerns how requests are handled.
-
-Source: [Fielding: REST architectural style](https://ics.uci.edu/~fielding/pubs/dissertation/rest_arch_style.htm).
 
 **REST, RPC and FastAPI — how they relate**
 
@@ -561,12 +454,7 @@ def calculate_total(items: list[int]):
 
 **REST and RPC describe the API’s interaction style; FastAPI is a tool for implementing it.** The second endpoint illustrates an RPC-style operation over HTTP; it does not implement the specific JSON-RPC message format. These small examples illustrate route design; using a resource URL alone does not establish compliance with all REST constraints.
 
-Sources: [FastAPI documentation](https://fastapi.tiangolo.com/), [Fielding: REST architectural style](https://ics.uci.edu/~fielding/pubs/dissertation/rest_arch_style.htm) and [JSON-RPC specification](https://www.jsonrpc.org/specification).
-
 ### 3B.2. What are GET, POST, PUT, PATCH and DELETE, and which are idempotent?
-
-**Status:** Locked
-
 **Idempotent** means repeating an identical request has the same intended effect on the server as making it once. The response or status code can still differ.
 
 | Method | Purpose | Idempotent? |
@@ -579,12 +467,7 @@ Sources: [FastAPI documentation](https://fastapi.tiangolo.com/), [Fielding: REST
 
 For example, a PATCH that **sets a status to “approved”** can be idempotent; one that **increments a counter** is not. Repeating DELETE can return `204` first and `404` later while remaining idempotent—the resource stays absent.
 
-Sources: [HTTP semantics and idempotent methods — RFC 9110](https://www.rfc-editor.org/rfc/rfc9110.html#section-9.2.2) and [PATCH — RFC 5789](https://www.rfc-editor.org/rfc/rfc5789.html#section-2).
-
 ### 3B.3. What do the main HTTP status codes mean, particularly 200, 201, 202, 401, 403, 422 and 500?
-
-**Status:** Locked
-
 | Code | Name |
 |---|---|
 | 200 | OK |
@@ -598,8 +481,6 @@ Sources: [HTTP semantics and idempotent methods — RFC 9110](https://www.rfc-ed
 | 422 | Unprocessable Content |
 | 429 | Too Many Requests |
 | 500 | Internal Server Error |
-
-Sources: [HTTP status codes — RFC 9110](https://www.rfc-editor.org/rfc/rfc9110.html#section-15) and [429 Too Many Requests — RFC 6585](https://www.rfc-editor.org/rfc/rfc6585.html#section-4).
 
 ### 3B.4. What are FastAPI, ASGI and Uvicorn, and how do they work together?
 
@@ -773,7 +654,6 @@ For a research API: **middleware records the trace ID**, a **dependency checks d
 
 **Key distinction:** Dependencies participate in endpoint execution; middleware wraps the request/response flow; exception handlers respond to failures.
 
-
 ### 3B.10. What is the difference between authentication and authorization, and where do OAuth 2.0 and JWT fit?
 
 - **Authentication:** Verifies **who the caller is**—a user or service. Missing or invalid credentials normally result in **401**.
@@ -937,9 +817,6 @@ They support:
 - **Automation and evaluation:** Results can be compared, routed and passed between tools consistently.
 In MCP, structured data is returned through **`structuredContent`**. If the tool declares an **`outputSchema`**, its structured result must conform to it.
 **Key nuance:** Correct structure does not guarantee correct facts. Evidence and business-rule checks are still needed.
-
-
-
 ### 4.9. What is the difference between a protocol error and a tool-execution error, and how should each be reported?
 
 | Error type | What failed? | How to report it |
@@ -952,8 +829,6 @@ In MCP, structured data is returned through **`structuredContent`**. If the tool
 Tool errors should provide actionable feedback so the model can correct its inputs or choose another action.
 
 **Key nuance:** Receiving a JSON-RPC `result` does not prove the operation succeeded—check `isError`.
-
-
 ### 4.10. How do authentication, authorization and least-privilege access apply to MCP tools?
 
 | Principle | Application to MCP |
@@ -1149,7 +1024,15 @@ Evaluate per-class precision/recall and macro F1, and choose the approach based 
 
 ### 8.7. What is the difference between logs, metrics and traces, and when would you use each?
 
+| Signal | What it records | When to use it |
+|---|---|---|
+| **Logs** | Timestamped events with details: errors, retry attempts and contextual fields | Debug a specific failure and inspect what happened |
+| **Metrics** | Numerical measurements aggregated over time: request counts, error rates, p95 latency and token usage | Monitor trends, build dashboards and trigger alerts |
+| **Traces** | The execution path of a request or agent run, composed of timed operations called **spans** | Find bottlenecks and understand interactions across retrieval, LLM calls, tools and services |
 
+**Agent example:** Metrics reveal rising response latency. A trace identifies a slow tool call and its retries. The associated logs show the timeout errors.
+
+**Key nuance:** Use them together. Propagate trace context across services and include `trace_id` and `span_id` in structured logs so you can connect an individual event to its execution path.
 
 ### 8.8. What is distributed tracing, and how do trace IDs, spans and context propagation connect API, queue and worker activity?
 
@@ -1161,4 +1044,16 @@ Evaluate per-class precision/recall and macro F1, and choose the approach based 
 
 ### 8.10. What is agent observability, and how do recorded prompts, tool calls, state changes and token/cost metrics help debug agent runs?
 
+**Agent observability means inspecting an agent’s execution to understand its behavior, failures, latency and cost.** It connects the final answer to the steps that produced it.
+
+| Recorded data | How it helps debug |
+|---|---|
+| **Prompts and context** | Show what instructions, history and retrieved evidence the model actually received; expose missing evidence or stale context |
+| **Tool calls** | Record tool names, arguments, results, errors and duration; reveal wrong tool choices, invalid arguments and dependency failures |
+| **State changes** | Show how memory, evidence and workflow status changed; reveal overwritten values, lost results and incorrect routing |
+| **Token/cost metrics** | Track usage and estimated charges per step and run, including retries; expose growing context and unnecessary model calls |
+
+**Example:** Repeated searches appear in tool traces. State snapshots reveal that earlier results were never saved. Token/cost metrics quantify the wasted calls.
+
+**Key nuance:** Correlate records using run/trace IDs, capture model and prompt versions, and redact sensitive content. A recorded trace supports investigation; resumable execution requires checkpoints.
 
