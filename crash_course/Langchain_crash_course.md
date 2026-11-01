@@ -19,12 +19,8 @@ from langchain.messages import SystemMessage, HumanMessage
 model = init_chat_model("openai:gpt-5-nano")
 
 messages = [
-    SystemMessage(
-        content="Summarize the supplied report excerpt in one sentence."
-    ),
-    HumanMessage(
-        content="Revenue increased 10%, while operating profit fell 5%."
-    ),
+    SystemMessage(content="Summarize the supplied report excerpt in one sentence."),
+    HumanMessage(content="Revenue increased 10%, while operating profit fell 5%."),
 ]
 
 response = model.invoke(messages)
