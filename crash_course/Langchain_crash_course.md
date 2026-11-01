@@ -67,20 +67,6 @@ print(response.text)
 print(prompt_value.to_messages())
 ```
 
-### ChatPromptValue — illustrative representation
-
-```text
-ChatPromptValue(
-    messages=[
-        SystemMessage(
-            content="Summarize the supplied report excerpt in one sentence."
-        ),
-        HumanMessage(
-            content="Revenue increased 10%, while operating profit fell 5%."
-        ),
-    ]
-)
-```
 
 ### Matching input keys
 
