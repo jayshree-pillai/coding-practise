@@ -973,3 +973,80 @@ Acme's revenue for 2025 was $120 million.
 ### Important notes
 
 - The model still decides whether to request a tool; the agent executes it when requested.
+
+## 20: Use Langchain and answer a question from the Azure Search Index:
+```python
+import os
+from dotenv import load_dotenv
+from azure.core.credentials import AzureKeyCredential
+from azure.search.documents import SearchClient
+from langchain_openai import ChatOpenAI
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+
+load_dotenv()
+
+
+# 1. Connect to the existing Azure AI Search index.
+search_client = SearchClient(
+    endpoint=os.environ["AZURE_SEARCH_ENDPOINT"],
+    index_name=os.environ["AZURE_SEARCH_INDEX"],
+    credential=AzureKeyCredential(
+        os.environ["AZURE_SEARCH_API_KEY"]
+    ),
+)
+
+
+# 2. Connect to the Azure-hosted chat model.
+model = ChatOpenAI(
+    model=os.environ["AZURE_OPENAI_DEPLOYMENT"],
+    base_url=os.environ["AZURE_OPENAI_BASE_URL"],
+    api_key=os.environ["AZURE_OPENAI_API_KEY"],
+)
+
+
+# 3. Define how the model should use the retrieved text.
+prompt = ChatPromptTemplate.from_messages([
+    (
+        "system",
+        "Answer using only the supplied context. "
+        "If it does not contain the answer, say you don't know."
+    ),
+    (
+        "human",
+        "Context:\n{context}\n\nQuestion: {question}"
+    ),
+])
+
+answer_chain = prompt | model | StrOutputParser()
+
+
+def answer_question(question):
+    # 4. Retrieve up to three matching records.
+    results = search_client.search(
+        search_text=question,
+        search_fields=["content"],
+        select=["content"],
+        top=3,
+    )
+
+    # 5. Combine their text into one context string.
+    context = "\n\n".join(
+        result["content"] for result in results
+        if result.get("content")
+    )
+
+    if not context.strip():
+        return "No matching content was found in the index."
+
+    # 6. Give the original question AND retrieved text to the model.
+    answer = answer_chain.invoke({
+        "question": question,
+        "context": context,
+    })
+
+    return answer
+
+
+print(answer_question("What was Acme's revenue in 2025?"))
+```
