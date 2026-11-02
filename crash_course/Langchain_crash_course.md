@@ -893,35 +893,69 @@ else:
 It handles model calls, executes requested tools, and sends their results back to the model.
 
 ```python
+from dotenv import load_dotenv
 from langchain.agents import create_agent
-from langchain.tools import tool
-from langchain.messages import HumanMessage
 from langchain_openai import ChatOpenAI
+from langchain_core.tools import tool
+from langchain_core.messages import HumanMessage
+#Your .env file should contain OPENAI_API_KEY=your_key_here.
+load_dotenv()
 
+
+# 1. Define the two tools.
 @tool
 def get_revenue(company: str, year: int):
-    """Look up annual revenue in USD, or return None if unavailable."""
+    """Look up a company's annual revenue in USD."""
+    print(f"Running get_revenue({company}, {year})")
+
     data = {
-        ("Acme", 2024): 100_000_000,
         ("Acme", 2025): 120_000_000
     }
-    return data.get((company, year))
+    return data.get((company, year), "Revenue unavailable")
 
+
+@tool
+def get_employee_count(company: str, year: int):
+    """Look up a company's year-end employee count."""
+    print(f"Running get_employee_count({company}, {year})")
+
+    data = {
+        ("Acme", 2025): 500
+    }
+    return data.get((company, year), "Employee count unavailable")
+
+
+# 2. Create the model.
 model = ChatOpenAI(model="gpt-5-nano")
 
+
+# 3. Create an agent with BOTH tools.
 agent = create_agent(
     model=model,
-    tools=[get_revenue],
-    system_prompt="Use tools for revenue lookups and answer concisely."
+    tools=[get_revenue, get_employee_count],
+    system_prompt=(
+        "Use the tools to look up requested figures. "
+        "Do not guess. Report the results concisely."
+    ),
 )
 
+
+# 4. Run the agent. It manages tool requests and execution.
 result = agent.invoke({
     "messages": [
-        HumanMessage("What was Acme's revenue for 2025?")
+        HumanMessage(
+            content=(
+                "Use both tools to find Acme's revenue and employee count "
+                "for 2025. Then report both figures."
+            )
+        )
     ]
 })
 
-print(result["messages"][-1].text)
+
+# 5. Read the final assistant message.
+final_message = result["messages"][-1]
+print("Final answer:", final_message.text)
 ```
 
 ### Example output
