@@ -946,34 +946,18 @@ model = ChatOpenAI(
 
 # 3. Define how the model should use the retrieved text.
 prompt = ChatPromptTemplate.from_messages([
-    (
-        "system",
-        "Answer using only the supplied context. "
-        "If it does not contain the answer, say you don't know."
-    ),
-    (
-        "human",
-        "Context:\n{context}\n\nQuestion: {question}"
-    ),
+    ("system","Answer using only the supplied context. If it does not contain the answer, say you don't know."),
+    ("human","Context:\n{context}\n\nQuestion: {question}"),
 ])
 
 answer_chain = prompt | model | StrOutputParser()
 
-
 def answer_question(question):
     # 4. Retrieve up to three matching records.
-    results = search_client.search(
-        search_text=question,
-        search_fields=["content"],
-        select=["content"],
-        top=3,
-    )
+    results = search_client.search(search_text=question,search_fields=["content"],select=["content"],top=3,)
 
     # 5. Combine their text into one context string.
-    context = "\n\n".join(
-        result["content"] for result in results
-        if result.get("content")
-    )
+    context = "\n\n".join(result["content"] for result in results if result.get("content")    )
 
     if not context.strip():
         return "No matching content was found in the index."
