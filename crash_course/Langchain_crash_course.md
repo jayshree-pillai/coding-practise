@@ -885,29 +885,13 @@ model = ChatOpenAI(model="gpt-5-nano")
 
 
 # 3. Create an agent with BOTH tools.
-agent = create_agent(
-    model=model,
-    tools=[get_revenue, get_employee_count],
-    system_prompt=(
-        "Use the tools to look up requested figures. "
-        "Do not guess. Report the results concisely."
-    ),
+agent = create_agent(model=model,tools=[get_revenue, get_employee_count],
+    system_prompt=("Use the tools to look up requested figures. Do not guess. Report the results concisely."),
 )
-
-
 # 4. Run the agent. It manages tool requests and execution.
 result = agent.invoke({
-    "messages": [
-        HumanMessage(
-            content=(
-                "Use both tools to find Acme's revenue and employee count "
-                "for 2025. Then report both figures."
-            )
-        )
-    ]
+    "messages": [HumanMessage(content=("Use both tools to find Acme's revenue and employee count for 2025. Then report both figures."))]
 })
-
-
 # 5. Read the final assistant message.
 final_message = result["messages"][-1]
 print("Final answer:", final_message.text)
