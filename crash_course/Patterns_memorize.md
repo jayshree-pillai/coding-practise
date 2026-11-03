@@ -627,16 +627,28 @@ paused = graph.invoke(
     {"report": "Revenue grew 12%.", "status": "pending"},
     config
 )
+
 print(paused["__interrupt__"])
+# [Interrupt(value={'report': 'Revenue grew 12%.'}, id='<generated-id>', response_schema=None)]
 
 snapshot = graph.get_state(config)
+
 print(snapshot.values, snapshot.next)
+# {'report': 'Revenue grew 12%.', 'status': 'pending'} ('review',)
+# State is still pending; review must resume.
 
 result = graph.invoke(Command(resume=True), config)
-print(result["status"])  # approved
+
+print(result["status"])
+# approved
 
 for snapshot in graph.get_state_history(config):
     print(snapshot.values, snapshot.next)
+
+# Prints these three lines, newest first:
+# {'report': 'Revenue grew 12%.', 'status': 'approved'} ()
+# {'report': 'Revenue grew 12%.', 'status': 'pending'} ('review',)
+# {} ('__start__',)
 ```
 
 **Critical notes:**
