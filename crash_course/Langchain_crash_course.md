@@ -782,99 +782,54 @@ Acme's revenue for 2025 was $120 million.
 ## 18. A tool-execution loop
 
 The previous example made two model calls. Now we repeat the exchange whenever the model requests another tool, sending each result back before continuing.
-
-Reuse `get_revenue` and `model_with_tools`:
-
 ```python
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langchain_core.tools import tool
 from langchain_core.messages import SystemMessage, HumanMessage, ToolMessage
-
 load_dotenv()
 
-
-# 1. Define two tools using sample data.
 @tool
-def get_revenue(company: str, year: int):
-    """Look up a company's annual revenue in USD."""
-    data = {
-        ("Acme", 2025): 120_000_000
-    }
-    return data.get((company, year), "Revenue unavailable")
-
-
+def get_revenue(company:str,year:int):
+	""" Get Company's revneue based on year """
+	data = {
+		("ACME",2024):100000,
+		("ACME",2025):150000,
+		}
+	return data.get((company,year))
 @tool
-def get_employee_count(company: str, year: int):
-    """Look up a company's year-end employee count."""
-    data = {
-        ("Acme", 2025): 500
-    }
-    return data.get((company, year), "Employee count unavailable")
-
-
-# 2. Tell the model which tools are available.
-model = ChatOpenAI(model="gpt-5-nano")
-
-model_with_tools = model.bind_tools([
-    get_revenue,
-    get_employee_count,
-])
-
-
-# 3. Map each tool's NAME to its actual tool OBJECT.
-tools_by_name = {
-    "get_revenue": get_revenue,
-    "get_employee_count": get_employee_count,
-}
-
-
-# 4. Start the conversation.
+def get_employee(company:str,year:int):
+	""" Get Company's employee based on year """
+	data = {
+		("ACME",2024):100,
+		("ACME",2025):150,
+		}
+	return data.get((company,year))
+	
+model = ChatOpenAI(model="XX")
+model_with_tools = model.bind_tools([get_revenue,get_employee])
+tools_by_name = { "get_revenue":get_revenue,"get_employee":get_employee}
 messages = [
-    SystemMessage(
-        content="Use the tools to look up requested figures. Do not guess."
-    ),
-    HumanMessage(
-        content=(
-            "Use both tools to find Acme's revenue and employee count "
-            "for 2025. Then report both figures."
-        )
-    ),
-]
-
-
-# 5. Repeat model calls and tool execution until we get a final answer.
+	SystemMessage(content="Use the tools and lookup info - donot guess"),
+	HumanMessage(content="Use the tools and find ACME's revenue and employee count for 2024")
+	]
 for _ in range(5):
-    response = model_with_tools.invoke(messages)
-    messages.append(response)
-
-    # No tool requests: the model has finished.
-    if not response.tool_calls:
-        print("Final answer:", response.text)
-        break
-
-    # Execute EVERY tool requested in this response.
-    for call in response.tool_calls:
-        print("Requested tool:", call["name"])
-        print("Arguments:", call["args"])
-
-        # Choose the correct tool using its name.
-        selected_tool = tools_by_name[call["name"]]
-
-        # Run that tool with the requested arguments.
-        result = selected_tool.invoke(call["args"])
-        print("Tool result:", result)
-
-        # Add the result so the next model call can read it.
-        messages.append(
-            ToolMessage(
-                content=str(result),
-                tool_call_id=call["id"],
-            )
-        )
-
+	response = model_with_tools.invoke(messages)
+	messages.append(response)
+	if not response.tool_calls:
+		print(f"Final_answer is {response.text}")
+		break
+	for call in response.tool_calls:
+		print(f"Requested tool is {call["name"]}")
+		print(f"Requested tool args is {call["args"]}")
+		
+		selected_tool = tools_by_name[call["name"]]
+		result = selected_tool.invoke(call["args"])
+		print(result)
+		
+		messages.append(ToolMessage(content=str(result),tool_call_id=call["id"]))
 else:
-    raise RuntimeError("No final answer within 5 model calls.")
+	raise RuntimeError("No final answer within 5 model calls")
 ```
 
 ### Three lines to understand
