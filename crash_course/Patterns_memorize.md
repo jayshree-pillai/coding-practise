@@ -824,7 +824,14 @@ class SearchRequest(BaseModel):
 request = SearchRequest.model_validate({"question": "What was revenue?"})
 print(request.model_dump())
 # {'question': 'What was revenue?', 'top_k': 5}
+
+
 ```
+
+- Use `SearchRequest(question="What was revenue?")` when passing fields directly.
+- Use `SearchRequest.model_validate(data)` when you already have a dictionary. Both forms validate the input.
+- `extra="forbid"` rejects unexpected keys. Add `strict=True` to the integer field to reject `"3"` as input.
+  
 | Method | Input → Output |
 |---|---|
 | `SearchRequest.model_validate(data)` | Dictionary → model instance |
@@ -832,9 +839,19 @@ print(request.model_dump())
 | `request.model_dump()` | Model instance → dictionary |
 | `request.model_dump_json()` | Model instance → JSON string |
 
-- Use `SearchRequest(question="What was revenue?")` when passing fields directly.
-- Use `SearchRequest.model_validate(data)` when you already have a dictionary. Both forms validate the input.
-- `extra="forbid"` rejects unexpected keys. Add `strict=True` to the integer field to reject `"3"` as input.
+```python
+data = {"active": True}       # Python dictionary
+
+text = '{"active": true}'     # String containing valid JSON
+
+bad = "{'active': True}"      # String, but NOT valid JSON
+#use json.dumps to convert to json correctly
+import json
+text = json.dumps(data)  # '{"active": true}'
+
+```
+
+
 
 ## 2. Clean a field before checking its constraints
 
