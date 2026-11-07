@@ -825,6 +825,12 @@ request = SearchRequest.model_validate({"question": "What was revenue?"})
 print(request.model_dump())
 # {'question': 'What was revenue?', 'top_k': 5}
 ```
+| Method | Input → Output |
+|---|---|
+| `SearchRequest.model_validate(data)` | Dictionary → model instance |
+| `SearchRequest.model_validate_json(text)` | JSON string → model instance |
+| `request.model_dump()` | Model instance → dictionary |
+| `request.model_dump_json()` | Model instance → JSON string |
 
 - Use `SearchRequest(question="What was revenue?")` when passing fields directly.
 - Use `SearchRequest.model_validate(data)` when you already have a dictionary. Both forms validate the input.
