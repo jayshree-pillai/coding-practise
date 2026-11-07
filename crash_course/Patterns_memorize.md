@@ -809,6 +809,176 @@ Then practice patterns **6–8**.
 # Pydantic v2 — Must-Memorize Interview Snippets
 
 Practice snippets 1–5 first, then aliases and discriminated unions. Each code block stands on its own.
+```python snippets
+import json
+from typing import Literal
+from pydantic import (
+    BaseModel, ConfigDict, Field, ValidationError,
+    field_validator, model_validator,
+)
+
+
+# Supporting models: two possible shapes for a nested source.
+class FileSource(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["file"]  # Accepts exactly "file".
+    filename: str
+    page: int = Field(ge=1)  # Must be >= 1.
+
+
+class WebSource(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["web"]
+    url: str  # Checks string type, not URL syntax.
+
+
+# MAIN MODEL: combines the interview topics.
+class SearchRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")  # Reject unknown keys.
+
+    question: str = Field(min_length=1)  # No default -> required.
+
+    top_k: int = Field(
+        default=5,     # Used when input omits this field.
+        ge=1, le=20,   # Allowed range: 1 through 20.
+        strict=True,   # Reject "3" and True; require an integer.
+        alias="topK",  # Input key: topK. Python attribute: top_k.
+    )
+
+    start_year: int  # Non-strict: "2024" can become integer 2024.
+    end_year: int
+
+    note: str | None = None  # Can be omitted OR explicitly be None.
+    # Without "= None", this field would be required but nullable.
+
+    tags: list[str] = Field(default_factory=list)
+    # Creates a fresh list per instance. Pass list, not list().
+
+    source: FileSource | WebSource = Field(discriminator="kind")
+    # Nested dictionary becomes a model.
+    # kind="file" chooses FileSource; kind="web" chooses WebSource.
+
+    @field_validator("question", mode="before")
+    @classmethod
+    def trim_question(cls, value):
+        # BEFORE: receives raw input before type/constraint checks.
+        if isinstance(value, str):
+            return value.strip()
+        return value  # Let Pydantic reject invalid types.
+
+    # Field validators return the field value.
+    # Default mode="after" receives the already parsed value.
+
+    @model_validator(mode="after")
+    def check_year_range(self):
+        # AFTER: receives self after the fields validate.
+        # Use this for rules involving multiple fields.
+        if self.end_year < self.start_year:
+            raise ValueError("end_year must be >= start_year")
+        return self  # Model after-validator must return the instance.
+
+
+payload = {
+    "question": "  What was revenue?  ",
+    "topK": 3,
+    "start_year": "2024",
+    "end_year": 2025,
+    "source": {
+        "kind": "file",
+        "filename": "annual_report.pdf",
+        "page": 3,
+    },
+}
+
+# 1. DICTIONARY -> VALIDATED MODEL INSTANCE
+request = SearchRequest.model_validate(payload)
+
+print(request.question)     # What was revenue? (trimmed)
+print(request.top_k)        # 3 (access Python attribute, not alias)
+print(request.start_year)   # 2024 (converted to int)
+print(request.source.page)  # 3 (nested object access)
+print(request.tags)         # [] (default_factory)
+print(request.note)         # None (default)
+
+
+# 2. DIRECT CONSTRUCTION ALSO VALIDATES
+direct = SearchRequest(
+    question="What was revenue?",
+    start_year=2024,
+    end_year=2025,
+    source={"kind": "web", "url": "https://example.com/report"},
+)
+
+print(direct.top_k)       # 5 (default: topK was omitted)
+print(direct.source.url)  # Nested object is a WebSource.
+
+
+# 3. MODEL INSTANCE -> DICTIONARY
+data = request.model_dump()
+
+print(type(data))              # <class 'dict'>
+print(data["source"]["page"])  # 3 (dictionary access now)
+print(data["top_k"])           # Default export uses Python field names.
+
+external_data = request.model_dump(by_alias=True)
+print(external_data["topK"])   # by_alias=True exports the alias.
+
+
+# 4. MODEL INSTANCE -> JSON STRING
+text = request.model_dump_json(by_alias=True)
+
+print(type(text))  # <class 'str'>
+# JSON uses double quotes and null instead of Python's None.
+# by_alias=True exports topK, matching this model's input alias.
+
+
+# 5. JSON STRING -> VALIDATED MODEL INSTANCE
+restored = SearchRequest.model_validate_json(text)
+
+print(restored.source.page)  # 3 (object access again)
+
+
+# Python-only conversions: these do NOT perform Pydantic validation.
+plain_text = json.dumps(data)        # Dictionary -> JSON string.
+plain_data = json.loads(plain_text)  # JSON object text -> dictionary.
+
+
+# 6. CATCH VALIDATION ERRORS
+bad_payload = {
+    **payload,  # Copy payload, then override these fields.
+    "question": "   ",  # Trims to empty -> min_length fails.
+    "topK": "3",        # strict=True rejects a string.
+    "source": {
+        "kind": "file",
+        "filename": "report.pdf",
+        "page": 0,      # Violates ge=1.
+    },
+    "unexpected": True,  # Rejected by extra="forbid".
+}
+
+try:
+    SearchRequest.model_validate(bad_payload)
+except ValidationError as exc:
+    for error in exc.errors():
+        print(error["loc"], error["type"], error["msg"])
+        # loc: failure path, e.g. ("source", "file", "page").
+        # type: machine-readable error code.
+        # msg: human-readable explanation.
+
+
+# 7. CROSS-FIELD ERROR: demonstrate separately.
+# The model after-validator runs only when field validation succeeds.
+try:
+    SearchRequest.model_validate({**payload, "end_year": 2023})
+except ValidationError as exc:
+    print(exc.errors()[0]["msg"])
+    # Value error, end_year must be >= start_year.
+
+
+# Pydantic validates structure and your rules—not factual truth.
+```
 
 ## 1. Define, validate, and serialize a request
 
